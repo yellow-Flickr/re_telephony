@@ -60,8 +60,8 @@ class SmsController(private val context: Context) {
     }
 
     // SEND SMS
-    fun sendSms(destinationAddress: String, messageBody: String, listenStatus: Boolean) {
-        val smsManager = getSmsManager()
+    fun sendSms(destinationAddress: String, messageBody: String, listenStatus: Boolean, subId: Int) {
+        val smsManager = getSmsManager(subId)
         if (listenStatus) {
             val pendingIntents = getPendingIntents()
             smsManager.sendTextMessage(
@@ -76,8 +76,8 @@ class SmsController(private val context: Context) {
         }
     }
 
-    fun sendMultipartSms(destinationAddress: String, messageBody: String, listenStatus: Boolean) {
-        val smsManager = getSmsManager()
+    fun sendMultipartSms(destinationAddress: String, messageBody: String, listenStatus: Boolean, subId: Int) {
+        val smsManager = getSmsManager(subId)
         val messageParts = smsManager.divideMessage(messageBody)
         if (listenStatus) {
             val pendingIntents = getMultiplePendingIntents(messageParts.size)
@@ -139,19 +139,14 @@ class SmsController(private val context: Context) {
         return Pair(sentPendingIntent, deliveredPendingIntent)
     }
 
-    private fun getSmsManager(): SmsManager {
-        val subscriptionId = SmsManager.getDefaultSmsSubscriptionId()
-        val smsManager : SmsManager?
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            smsManager = getSystemService(context, SmsManager::class.java)
-        } else {
-            smsManager = SmsManager.getDefault()
+    private fun getSmsManager(subId: Int): SmsManager {
+        var subscriptionId = subId
+        if(subId == -1){
+            subscriptionId = SmsManager.getDefaultSmsSubscriptionId()
         }
 
-        if(smsManager == null) {
-            throw RuntimeException("Flutter Telephony: Error getting SmsManager")
-        }
-
+        val smsManager = getSystemService(context, SmsManager::class.java)
+            ?: throw RuntimeException("Flutter Telephony: Error getting SmsManager")
         if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 smsManager.createForSubscriptionId(subscriptionId)

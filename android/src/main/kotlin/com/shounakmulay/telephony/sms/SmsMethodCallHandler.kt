@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Context.RECEIVER_EXPORTED
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
@@ -21,6 +22,7 @@ import com.shounakmulay.telephony.utils.Constants.FAILED_FETCH
 import com.shounakmulay.telephony.utils.Constants.GET_STATUS_REQUEST_CODE
 import com.shounakmulay.telephony.utils.Constants.ILLEGAL_ARGUMENT
 import com.shounakmulay.telephony.utils.Constants.LISTEN_STATUS
+import com.shounakmulay.telephony.utils.Constants.SUBSCRIPTION_ID
 import com.shounakmulay.telephony.utils.Constants.MESSAGE_BODY
 import com.shounakmulay.telephony.utils.Constants.PERMISSION_DENIED
 import com.shounakmulay.telephony.utils.Constants.PERMISSION_DENIED_MESSAGE
@@ -66,6 +68,7 @@ class SmsMethodCallHandler(
 
   private lateinit var messageBody: String
   private lateinit var address: String
+  private var subId: Int = -1
   private var listenStatus: Boolean = false
 
   private var setupHandle: Long = -1
@@ -99,6 +102,7 @@ class SmsMethodCallHandler(
             && call.hasArgument(ADDRESS)) {
           val messageBody = call.argument<String>(MESSAGE_BODY)
           val address = call.argument<String>(ADDRESS)
+          var subId: Int? = call.argument<Int>(SUBSCRIPTION_ID)
           if (messageBody.isNullOrBlank() || address.isNullOrBlank()) {
             result.error(ILLEGAL_ARGUMENT, Constants.MESSAGE_OR_ADDRESS_CANNOT_BE_NULL, null)
             return
@@ -106,6 +110,9 @@ class SmsMethodCallHandler(
 
           this.messageBody = messageBody
           this.address = address
+          if(subId != null){
+            this.subId = subId
+          }
 
           listenStatus = call.argument(LISTEN_STATUS) ?: false
         }
@@ -191,11 +198,15 @@ class SmsMethodCallHandler(
         addAction(Constants.ACTION_SMS_SENT)
         addAction(Constants.ACTION_SMS_DELIVERED)
       }
-      context.applicationContext.registerReceiver(this, intentFilter)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        context.applicationContext.registerReceiver(this, intentFilter, RECEIVER_EXPORTED)
+      }else {
+        context.applicationContext.registerReceiver(this, intentFilter)
+      }
     }
     when (smsAction) {
-      SmsAction.SEND_SMS -> smsController.sendSms(address, messageBody, listenStatus)
-      SmsAction.SEND_MULTIPART_SMS -> smsController.sendMultipartSms(address, messageBody, listenStatus)
+      SmsAction.SEND_SMS -> smsController.sendSms(address, messageBody, listenStatus, subId)
+      SmsAction.SEND_MULTIPART_SMS -> smsController.sendMultipartSms(address, messageBody, listenStatus, subId)
       SmsAction.SEND_SMS_INTENT -> smsController.sendSmsIntent(address, messageBody)
       else -> throw IllegalArgumentException()
     }

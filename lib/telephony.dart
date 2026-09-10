@@ -12,6 +12,7 @@ part 'filter.dart';
 typedef MessageHandler(SmsMessage message);
 typedef SmsSendStatusListener(SendStatus status);
 
+@pragma('vm:entry-point')
 void _flutterSmsSetupBackgroundChannel(
     {MethodChannel backgroundChannel =
         const MethodChannel(_BACKGROUND_CHANNEL)}) async {
@@ -305,6 +306,7 @@ class Telephony {
     required String message,
     SmsSendStatusListener? statusListener,
     bool isMultipart = false,
+    int subscriptionId = -1,
   }) async {
     assert(_platform.isAndroid == true, "Can only be called on Android.");
     bool listenStatus = false;
@@ -315,7 +317,8 @@ class Telephony {
     final Map<String, dynamic> args = {
       "address": to,
       "message_body": message,
-      "listen_status": listenStatus
+      "listen_status": listenStatus,
+      "sub_id": subscriptionId
     };
     final String method = isMultipart ? SEND_MULTIPART_SMS : SEND_SMS;
     await _foregroundChannel.invokeMethod(method, args);
@@ -580,7 +583,7 @@ class SmsMessage {
   SmsMessage.fromMap(Map rawMessage, List<SmsColumn> columns) {
     final message = Map.castFrom<dynamic, dynamic, String, dynamic>(rawMessage);
     for (var column in columns) {
-      debugPrint('Column is ${column._columnName}');
+      // debugPrint('Column is ${column._columnName}');
       final value = message[column._columnName];
       switch (column._columnName) {
         case _SmsProjections.ID:

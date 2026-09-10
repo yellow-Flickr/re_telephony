@@ -1,7 +1,8 @@
+import "package:another_telephony/telephony.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:platform/platform.dart";
-import "package:telephony/telephony.dart";
+
 import 'mocks/messages.dart';
 
 main() {
@@ -16,14 +17,16 @@ main() {
     methodChannel = MethodChannel("testChannel");
     telephony = Telephony.private(
         methodChannel, FakePlatform(operatingSystem: "android"));
-    methodChannel.setMockMethodCallHandler((call) {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(methodChannel, (call) async {
       log.add(call);
       return telephony.handler(call);
     });
   });
 
   tearDown(() {
-    methodChannel.setMockMethodCallHandler(null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(methodChannel, null);
     log.clear();
   });
 
@@ -36,7 +39,8 @@ main() {
       final args = {
         "address": "0000000000",
         "message_body": "Test message",
-        "listen_status": true
+        "listen_status": true,
+        "sub_id": -1
       };
 
       telephony.sendSms(
